@@ -41,18 +41,7 @@ for(;;) {
   addrlen = sizeof(clt_addr); 
   newsockfd = accept(sockfd, (struct sockaddr*)&clt_addr, &addrlen);
   if(newsockfd < 0) syserr("can't accept"); 
-  
-  pid = fork();
-   if (pid < 0)
-     error("ERROR on fork");
-   if (pid == 0)
-   {
-     close(sockfd);
-     dostuff(newsockfd);
-     exit(0);
-   }
 
-/*
   printf("new incoming connection, block on receive\n");
   n = recv(newsockfd, buffer, 255, 0); 
   if(n < 0) syserr("can't receive from client"); 
@@ -63,7 +52,6 @@ for(;;) {
   n = send(newsockfd, buffer, sizeof(buffer), 0);
   if(n < 0) syserr("can't send to server"); 
   printf("send message...\n");
-  */
 
   close(newsockfd); 
 }

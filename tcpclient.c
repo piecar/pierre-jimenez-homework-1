@@ -13,6 +13,7 @@ int main(int argc, char* argv[])
 {
   //Sockfd: file descriptor; portno: port number; n: return values for read and write
   int sockfd, portno, n;
+  char *input;
   struct hostent* server; // server info
   struct sockaddr_in serv_addr; //server address info
   char buffer[256];
@@ -54,6 +55,33 @@ int main(int argc, char* argv[])
   if(connect(sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0)
     syserr("can't connect to server");
   printf("connect...\n");
+  
+  for(;;){
+  	scanf("%s", &input);
+  	if(strcmp(input, "ls-local") == 0)
+  	{
+  	}
+  	if(strcmp(input, "ls-remote") == 0)
+  	{
+  	}
+  	if(strcmp(input, "exit") == 0)
+  	{
+  	} 	
+  	//tokenize if get/put
+  	char *comm, filename;
+  	comm = strtok(input, " ");
+  	filename = strtok(NULL, " ");
+  	if(strcmp(input, "get") == 0)
+  	{
+  		strcpy(buffer, "get");
+  		strcat(buffer, filename);
+  	}
+  	if(strcmp(input, "put") == 0)
+  	{
+  	}
+  	
+  }
+  
 
   printf("PLEASE ENTER MESSAGE: ");
   fgets(buffer, 255, stdin);
