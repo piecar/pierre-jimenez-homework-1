@@ -105,6 +105,9 @@ int main(int argc, char* argv[])
 		
 		file = malloc(size);
 		n = recv(sockfd, file, sizeof(file), 0); // receieve the file
+		tempfd = open(filename, O_CREAT | O_WRONLY, 0666); //overwrites exisitng file??
+		write(tempfd, &file, size);
+		close(tempfd);
   	}
   	if(strcmp(input, "put") == 0)
   	{
