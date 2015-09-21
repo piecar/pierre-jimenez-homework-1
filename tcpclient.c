@@ -93,6 +93,18 @@ int main(int argc, char* argv[])
   	{
   		strcpy(buffer, "get");
   		strcat(buffer, filename);
+		n = send(sockfd, buffer, strlen(buffer), 0); // may need to fix buffer with /0 ending
+		if(n < 0) syserr("can't send to server");
+		n = recv(sockfd, &size, sizeof(int), 0); // get the file pointer
+        if(n < 0) syserr("can't receive from server");
+		if(size ==0) // check if file exists
+		{
+			printf("File not found\n");
+			break;
+		}
+		
+		file = malloc(size);
+		n = recv(sockfd, file, sizeof(file), 0); // receieve the file
   	}
   	if(strcmp(input, "put") == 0)
   	{
