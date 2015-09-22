@@ -6,8 +6,11 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 void syserr(char* msg) { perror(msg); exit(-1); }
+void recvandwrite(int tempfd, int sockfd, int size, char* buffer);
 
 int main(int argc, char* argv[])
 {
@@ -45,10 +48,10 @@ int main(int argc, char* argv[])
   printf("connect...\n");
   
   for(;;){
-  	scanf("%s", &input);
+  	scanf("%s", input);
   	if(strcmp(input, "ls-local") == 0)
   	{
-		system("ls");
+		system("ls -a | cat");
   	}
   	if(strcmp(input, "ls-remote") == 0)
   	{
@@ -60,7 +63,7 @@ int main(int argc, char* argv[])
 		file = malloc(size); // make space for a list of files on the server
 		
 		n = recv(sockfd, file, sizeof(file), 0); //put list into f
-		tempfd = creat("remotelist.txt", O_WRONLY); //create  a text file to put list
+		tempfd = creat("remotelist.txt", 0666); //create  a text file to put list
 		write(tempfd, &file, size);
 		close(tempfd);
 		printf("Files at the server(%s)\n", argv[1]);
@@ -85,11 +88,11 @@ int main(int argc, char* argv[])
 		
   	} 	
   	//tokenize if get/put
-  	char *comm, filename;
+  	char *comm, *filename;
   	comm = strtok(input, " ");
   	filename = strtok(NULL, " ");
 	
-  	if(strcmp(input, "get") == 0)
+  	if(strcmp(comm, "get") == 0)
   	{
   		strcpy(buffer, "get");
   		strcat(buffer, filename);
@@ -97,6 +100,7 @@ int main(int argc, char* argv[])
 		if(n < 0) syserr("can't send to server");
 		n = recv(sockfd, &size, sizeof(int), 0); // get the file pointer
         if(n < 0) syserr("can't receive from server");
+        size = ntohl(size);        
 		if(size ==0) // check if file exists
 		{
 			printf("File not found\n");
@@ -113,28 +117,13 @@ int main(int argc, char* argv[])
 		close(tempfd);
 		*/
   	}
-  	if(strcmp(input, "put") == 0)
+  	if(strcmp(comm, "put") == 0)
   	{
   		strcpy(buffer, "put");
   		strcat(buffer, filename);
   	}
   	
   }
-  
-/*
-  printf("PLEASE ENTER MESSAGE: ");
-  fgets(buffer, 255, stdin);
-  n = strlen(buffer); if(n>0 && buffer[n-1] == '\n') buffer[n-1] = '\0';
-
-  n = send(sockfd, buffer, strlen(buffer), 0);
-  if(n < 0) syserr("can't send to server");
-  printf("send...\n");
-  
-  n = recv(sockfd, buffer, 255, 0);
-  if(n < 0) syserr("can't receive from server");
-  else buffer[n] = '\0';
-  printf("CLIENT RECEIVED MESSAGE: %s\n", buffer);
-*/
   close(sockfd);
   return 0;
 }
@@ -160,13 +149,10 @@ void recvandwrite(int tempfd, int sockfd, int size, char* buffer)
 		}
 		
 		int bytes_written = write(tempfd, buffer, sizeof(buffer)); //is buffer cleared here?
-		int totalWritten += bytes_written;
+		totalWritten += bytes_written;
 		if (bytes_written == 0 || totalWritten == size) // We're done writing into the file
 			break;
 
 		if (bytes_written < 0) syserr("error writing file"); 
-    }
-		
-	}
-	
+    }	
 }

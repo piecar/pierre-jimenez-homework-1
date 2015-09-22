@@ -5,12 +5,16 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 void syserr(char *msg) { perror(msg); exit(-1); }
+void ftpcomm(int newsockfd, char* buffer);
+void readandsend(int tempfd, int newsockfd, char* buffer);
 
 int main(int argc, char *argv[])
 {
-  int sockfd, newsockfd, portno, n, size;
+  int sockfd, newsockfd, portno, pid;
   struct sockaddr_in serv_addr, clt_addr;
   socklen_t addrlen;
   char buffer[256];
@@ -44,7 +48,7 @@ for(;;) {
   
   pid = fork();
    if (pid < 0)
-     error("ERROR on fork");
+     syserr("Error on fork");
    if (pid == 0)
    {
      close(sockfd);
@@ -52,20 +56,7 @@ for(;;) {
      exit(0);
    }
    else
-	 close(newsockfd); 
-
-/*
-  printf("new incoming connection, block on receive\n");
-  n = recv(newsockfd, buffer, 255, 0); 
-  if(n < 0) syserr("can't receive from client"); 
-  else buffer[n] = '\0';
-  printf("SERVER GOT MESSAGE: %s\n", buffer); 
-
-  revert(buffer);
-  n = send(newsockfd, buffer, sizeof(buffer), 0);
-  if(n < 0) syserr("can't send to server"); 
-  printf("send message...\n");
-  */
+	 close(newsockfd);
 }
   close(sockfd); 
   return 0;
@@ -73,20 +64,21 @@ for(;;) {
 
 void ftpcomm(int newsockfd, char* buffer)
 {
-	int n, sizem tempfd;
+	int n, size, tempfd;
     struct stat filestats;
 	char * filename;
 	for(;;)
 	{
-		n = recv(newsockfd, buffer, sizeof(buffer), 0)
+		n = recv(newsockfd, buffer, sizeof(buffer), 0);
 		if(n < 0) syserr("can't receive from client");
 		sscanf(buffer, "%s", command);
 		
 		if(strcmp(command, "ls") == 0)
 		{
-			system("ls >remotelist.txt");
+			system("ls -a | cat >remotelist.txt");
 			stat("remotelist.txt", &filestats);
 			size = filestats.st._size;
+            size = htonl(size);        
 			send(newsockfd, &size, sizeof(int), 0)
 			tempfd = open("remotelist.txt", O_REDONLY);
 			if(tempfd < 0) syserr("failed to open remotelist.txt, server side");
@@ -106,6 +98,7 @@ void ftpcomm(int newsockfd, char* buffer)
 			sscanf(buffer, "%*s%s", filename);
 			stat(filename, filestats);
 			size = filestats.st_size;
+            size = htonl(size);      
 			send(newsockfd, &size, sizeof(int), 0);
 			tempfd = open(filename, O_REDONLY);
 			if(tempfd < 0) syserr("failed to get file, server side");
