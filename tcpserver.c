@@ -10,7 +10,7 @@ void syserr(char *msg) { perror(msg); exit(-1); }
 
 int main(int argc, char *argv[])
 {
-  int sockfd, newsockfd, portno, n;
+  int sockfd, newsockfd, portno, n, size;
   struct sockaddr_in serv_addr, clt_addr;
   socklen_t addrlen;
   char buffer[256];
@@ -48,9 +48,11 @@ for(;;) {
    if (pid == 0)
    {
      close(sockfd);
-     dostuff(newsockfd);
+     ftpcomm(newsockfd, buffer);
      exit(0);
    }
+   else
+	 close(newsockfd); 
 
 /*
   printf("new incoming connection, block on receive\n");
@@ -64,9 +66,77 @@ for(;;) {
   if(n < 0) syserr("can't send to server"); 
   printf("send message...\n");
   */
-
-  close(newsockfd); 
 }
   close(sockfd); 
   return 0;
+}
+
+void ftpcomm(int newsockfd, char* buffer)
+{
+	int n, sizem tempfd;
+    struct stat filestats;
+	char * filename;
+	for(;;)
+	{
+		n = recv(newsockfd, buffer, sizeof(buffer), 0)
+		if(n < 0) syserr("can't receive from client");
+		sscanf(buffer, "%s", command);
+		
+		if(strcmp(command, "ls") == 0)
+		{
+			system("ls >remotelist.txt");
+			stat("remotelist.txt", &filestats);
+			size = filestats.st._size;
+			send(newsockfd, &size, sizeof(int), 0)
+			tempfd = open("remotelist.txt", O_REDONLY);
+			if(tempfd < 0) syserr("failed to open remotelist.txt, server side");
+			readandsend(tempfd, newsockfd, buffer);			
+		}
+		
+		if(strcmp(command, "exit") == 0)
+		{
+			printf("Server shutting down\n");
+			int = 1;
+			send(newsockfd, &1, sizeof(int), 0);
+			break;  // check to make sure it doesn't need to be exit
+		}
+		
+		if(strcmp(command, "get") == 0)
+		{
+			sscanf(buffer, "%*s%s", filename);
+			stat(filename, filestats);
+			size = filestats.st_size;
+			send(newsockfd, &size, sizeof(int), 0);
+			tempfd = open(filename, O_REDONLY);
+			if(tempfd < 0) syserr("failed to get file, server side");
+			readandsend(tempfd, newsockfd, buffer);			
+		}
+	}
+}
+
+void readandsend(int tempfd, int newsockfd, char* buffer)
+{
+	while (1)
+	{
+		int bytes_read = read(tempfd, buffer, sizeof(buffer)); //is buffer cleared here?
+		if (bytes_read == 0) // We're done reading from the file
+			break;
+
+		if (bytes_read < 0) syserr("error reading file"); 
+		
+		int total = 0;
+		int n;
+		int bytesleft = sizeof(buffer);
+		while(total < sizeof(buffer))
+		{
+			n = send(newsockfd, buffer+total, bytesleft, 0);
+			if (n == -1) 
+			{ 
+			   syserr("error sending file"); 
+			   break;
+			}
+			total += n;
+			bytesleft -= n;
+		}
+	}
 }

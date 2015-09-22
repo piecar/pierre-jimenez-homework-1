@@ -102,12 +102,16 @@ int main(int argc, char* argv[])
 			printf("File not found\n");
 			break;
 		}
+		tempfd = open(filename, O_CREAT | O_WRONLY, 0666);
+		recvandwrite(tempfd, sockfd, size, buffer);
 		
+		/*    CHANGE ALL THIS!!!
 		file = malloc(size);
 		n = recv(sockfd, file, sizeof(file), 0); // receieve the file
 		tempfd = open(filename, O_CREAT | O_WRONLY, 0666); //overwrites exisitng file??
 		write(tempfd, &file, size);
 		close(tempfd);
+		*/
   	}
   	if(strcmp(input, "put") == 0)
   	{
@@ -133,4 +137,36 @@ int main(int argc, char* argv[])
 */
   close(sockfd);
   return 0;
+}
+
+void recvandwrite(int tempfd, int sockfd, int size, char* buffer)
+{
+	int totalWritten = 0;
+	while(1)
+	{
+		int total = 0;
+		int bytesleft = sizeof(buffer); //bytes left to recieve
+		int n;
+		while(total < sizeof(buffer))
+		{
+			n = recv(sockfd, buffer+total, bytesleft, 0);
+			if (n == -1) 
+			{ 
+				syserr("error sending file"); 
+				break;
+			}
+			total += n;
+			bytesleft -= n;
+		}
+		
+		int bytes_written = write(tempfd, buffer, sizeof(buffer)); //is buffer cleared here?
+		int totalWritten += bytes_written;
+		if (bytes_written == 0 || totalWritten == size) // We're done writing into the file
+			break;
+
+		if (bytes_written < 0) syserr("error writing file"); 
+    }
+		
+	}
+	
 }
