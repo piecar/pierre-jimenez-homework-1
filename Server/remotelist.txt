@@ -1,0 +1,6 @@
+ftpserver
+ftpserver.c
+ftpserver.c~
+Makefile
+Makefile~
+remotelist.txt
