@@ -1,0 +1,6 @@
+Makefile
+myftpserver
+myftpserver.c
+myftpserver.c~
+pic.JPG
+remotelist.txt
