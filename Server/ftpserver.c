@@ -7,6 +7,7 @@
 #include <netinet/in.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#define BUFFSIZE 256
 
 void syserr(char *msg) { perror(msg); exit(-1); }
 void ftpcomm(int newsockfd, char* buffer);
@@ -68,14 +69,15 @@ void ftpcomm(int newsockfd, char* buffer)
     struct stat filestats;
 	char * filename;
 	char command[20];
+	filename = malloc(sizeof(char)*BUFFSIZE);
 	for(;;)
 	{
 	    memset(buffer, 0, sizeof(buffer));
-		n = recv(newsockfd, buffer, sizeof(buffer), 0);
+		n = recv(newsockfd, buffer, BUFFSIZE, 0);
 		printf("amount of data recieved: %d\n", n);
 		if(n < 0) syserr("can't receive from client");
 		sscanf(buffer, "%s", command);
-		printf("command from client is: %s\n", buffer);
+		printf("message from client is: %s\n", buffer);
 		
 		if(strcmp(command, "ls") == 0)
 		{
@@ -103,10 +105,15 @@ void ftpcomm(int newsockfd, char* buffer)
 		if(strcmp(command, "get") == 0)
 		{
 			sscanf(buffer, "%*s%s", filename);
+			printf("filename from client is: %s\n", filename);
+			printf("size of filename is: %lu\n", sizeof(filename));
 			stat(filename, &filestats);
 			size = filestats.st_size;
+			printf("Size of file to send: %d\n", size);
             size = htonl(size);      
-			send(newsockfd, &size, sizeof(int), 0);
+			n = send(newsockfd, &size, sizeof(int), 0);
+		    if(n < 0) syserr("couldn't send size to client");
+			printf("The amount of bytes sent for filesize is: %d\n", n);
 			tempfd = open(filename, O_RDONLY);
 			if(tempfd < 0) syserr("failed to get file, server side");
 			readandsend(tempfd, newsockfd, buffer);			
@@ -119,18 +126,19 @@ void readandsend(int tempfd, int newsockfd, char* buffer)
 	while (1)
 	{
 		memset(buffer, 0, sizeof(buffer));
-		int bytes_read = read(tempfd, buffer, sizeof(buffer)); //is buffer cleared here?
+		int bytes_read = read(tempfd, buffer, BUFFSIZE); //is buffer cleared here?
 		buffer[bytes_read] = '\0';
 		if (bytes_read == 0) // We're done reading from the file
 			break;
 
-		if (bytes_read < 0) syserr("error reading file"); 
+		if (bytes_read < 0) syserr("error reading file");
+		printf("The amount of bytes read is: %d\n", bytes_read); 
 		
 		int total = 0;
 		int n;
-		int bytesleft = sizeof(buffer);
-		printf("The buffer is: %s\n", buffer);
-		while(total < sizeof(buffer))
+		int bytesleft = bytes_read;
+		printf("The buffer is: \n%s", buffer);
+		while(total < bytes_read)
 		{
 			n = send(newsockfd, buffer+total, bytesleft, 0);
 			if (n == -1) 
@@ -138,6 +146,7 @@ void readandsend(int tempfd, int newsockfd, char* buffer)
 			   syserr("error sending file"); 
 			   break;
 			}
+			printf("The amount of bytes sent is: %d\n", n);
 			total += n;
 			bytesleft -= n;
 		}

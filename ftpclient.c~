@@ -8,6 +8,7 @@
 #include <arpa/inet.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#define BUFFSIZE 256
 
 void syserr(char* msg) { perror(msg); exit(-1); }
 void recvandwrite(int tempfd, int sockfd, int size, char* buffer);
@@ -16,11 +17,15 @@ int main(int argc, char* argv[])
 {
   //Sockfd: file descriptor; portno: port number; n: return values for read and write
   int sockfd, portno, n, size, tempfd;
-  char input[50];
-  char *file; //user input, file pointer
+  char input[70];
+  char *filename;
+  char *command;
+  char *file; // file pointer
   struct hostent* server; // server info
   struct sockaddr_in serv_addr; //server address info
   char buffer[256];
+  command = malloc(sizeof(char)*sizeof(buffer));
+  filename = malloc(sizeof(char)*sizeof(buffer));
 
   if(argc != 3) {
     fprintf(stderr, "Usage: %s <hostname> <port>\n", argv[0]);
@@ -50,12 +55,19 @@ int main(int argc, char* argv[])
   printf("Connection established. Waiting for commands...\n");
   
   for(;;){
-  	scanf("%s", input);
-  	if(strcmp(input, "ls-local") == 0)
-  	{
+  	fgets(buffer, sizeof(input), stdin);
+  	int m = strlen(buffer);
+  	if (m>0 && buffer[m-1] == '\n')
+  		buffer[m-1] = '\0';
+  	
+  	strcpy(command, strtok(buffer, " "));
+  	printf("The size of command is: %lu\n", sizeof(command));
+  	printf("The command is: %s\n", command);
+  	if(strcmp(command, "ls-local") == 0)
+  	{	
 		system("ls -a | cat");
   	}
-  	if(strcmp(input, "ls-remote") == 0)
+  	if(strcmp(command, "ls-remote") == 0)
   	{
   		memset(buffer, 0, sizeof(buffer));
 		strcpy(buffer, "ls");
@@ -74,7 +86,7 @@ int main(int argc, char* argv[])
 		system("cat remotelist.txt");
 		free(file);		
   	}
-  	if(strcmp(input, "exit") == 0)
+  	if(strcmp(command, "exit") == 0)
   	{
   		memset(buffer, 0, sizeof(buffer));
 		strcpy(buffer, "exit");
@@ -98,17 +110,28 @@ int main(int argc, char* argv[])
 		
   	} 	
   	//tokenize if get/put
-  	char *comm, *filename;
+  	/*
+  	char *comm;
   	comm = strtok(input, " ");
-  	filename = strtok(NULL, " ");
-	
-  	if(strcmp(comm, "get") == 0)
+  	while(token != NULL)
   	{
-  		strcpy(buffer, "get");
+  		filename = strtok(NULL, " ");
+  	}
+		printf("command is token: %s\n", comm);
+		printf("filename is token: %s\n", filename);
+	*/
+  	if(strcmp(command, "get") == 0)
+  	{
+  		strcpy(filename, strtok(NULL, " "));
+  		printf("The filename is: %s\n", filename);
+  		memset(buffer, 0, sizeof(buffer));
+  		strcpy(buffer, "get ");
   		strcat(buffer, filename);
-		n = send(sockfd, buffer, strlen(buffer), 0); // may need to fix buffer with /0 ending
+		printf("sent in buffer: %s\n", buffer);
+		n = send(sockfd, buffer, BUFFSIZE, 0);
+		printf("amount of data sent: %d\n", n);
 		if(n < 0) syserr("can't send to server");
-		n = recv(sockfd, &size, sizeof(int), 0); // get the file pointer
+		n = recv(sockfd, &size, sizeof(int), 0); 
         if(n < 0) syserr("can't receive from server");
         size = ntohl(size);        
 		if(size ==0) // check if file exists
@@ -116,21 +139,29 @@ int main(int argc, char* argv[])
 			printf("File not found\n");
 			break;
 		}
+		printf("The size of the file to recieve is: %d\n", size);
 		tempfd = open(filename, O_CREAT | O_WRONLY, 0666);
 		recvandwrite(tempfd, sockfd, size, buffer);
 		
-		/*    CHANGE ALL THIS!!!
+		/*
 		file = malloc(size);
 		n = recv(sockfd, file, sizeof(file), 0); // receieve the file
+		printf("The amount of bytes receieved is: %d\n", n);
+		
 		tempfd = open(filename, O_CREAT | O_WRONLY, 0666); //overwrites exisitng file??
-		write(tempfd, &file, size);
-		close(tempfd);
+		write(tempfd, &buffer, size);
+		
 		*/
+		close(tempfd);
+		
   	}
-  	if(strcmp(comm, "put") == 0)
+  	if(strcmp(command, "put") == 0)
   	{
-  		strcpy(buffer, "put");
+  		strcpy(filename, strtok(NULL, " "));
+  		printf("The filename is: %s\n", filename);
+  		strcpy(buffer, "put ");
   		strcat(buffer, filename);
+		printf("sent in buffer: %s\n", buffer);
   	}
   	
   }
@@ -143,22 +174,25 @@ void recvandwrite(int tempfd, int sockfd, int size, char* buffer)
 	int totalWritten = 0;
 	while(1)
 	{
+		memset(buffer, 0, sizeof(buffer));
 		int total = 0;
-		int bytesleft = sizeof(buffer); //bytes left to recieve
+		int bytesleft = size; //bytes left to recieve
 		int n;
-		while(total < sizeof(buffer))
+		while(total < size)
 		{
 			n = recv(sockfd, buffer+total, bytesleft, 0);
 			if (n == -1) 
 			{ 
-				syserr("error sending file"); 
+				syserr("error receiving file"); 
 				break;
 			}
 			total += n;
 			bytesleft -= n;
 		}
+		printf("The buffer is: \n%s", buffer);
 		
-		int bytes_written = write(tempfd, buffer, sizeof(buffer)); //is buffer cleared here?
+		int bytes_written = write(tempfd, buffer, BUFFSIZE); //is buffer cleared here?
+		printf("Amount of bytes written to file is: %d\n", bytes_written);
 		totalWritten += bytes_written;
 		if (bytes_written == 0 || totalWritten == size) // We're done writing into the file
 			break;
