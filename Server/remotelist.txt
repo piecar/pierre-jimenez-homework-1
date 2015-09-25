@@ -1,6 +1,10 @@
+dMakeFile
+dummyMakeFile
+ftpclient.c
 ftpserver
 ftpserver.c
 ftpserver.c~
 Makefile
-Makefile~
+mydoc.docs
+mydoc.docx
 remotelist.txt
