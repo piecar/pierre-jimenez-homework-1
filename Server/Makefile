@@ -1,8 +1,8 @@
-all:	 ftpserver
+all:	 myftpserver
 
-tcpserver: ftpserver.c
+myftpserver: myftpserver.c
 	gcc -Wall $< -o $@
 
 clean:
-	rm -f ftpserver *.o *~ core
+	rm -f myftpserver *.o *~ core
 
