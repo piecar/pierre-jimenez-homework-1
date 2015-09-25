@@ -175,32 +175,44 @@ int main(int argc, char* argv[])
 void recvandwrite(int tempfd, int sockfd, int size, char* buffer)
 {
 	int totalWritten = 0;
+	int useSize = 0;
 	while(1)
 	{
-		memset(buffer, 0, sizeof(buffer));
-		int total = 0;
-		int bytesleft = size; //bytes left to recieve
-		int n;
-		while(total < size)
+		if(size - totalWritten < BUFFSIZE) 
 		{
-			n = recv(sockfd, buffer+total, bytesleft, 0);
-			if (n == -1) 
-			{ 
-				syserr("error receiving file"); 
-				break;
-			}
-			total += n;
-			bytesleft -= n;
+			useSize = size - totalWritten;
 		}
-		printf("The buffer is: \n%s", buffer);
+		else
+		{
+			useSize = BUFFSIZE;
+		}
+			memset(buffer, 0, sizeof(buffer));
+			int total = 0;
+			int bytesleft = useSize; //bytes left to recieve
+			int n;
+			while(total < useSize)
+			{
+				n = recv(sockfd, buffer+total, bytesleft, 0);
+				if (n == -1) 
+				{ 
+					syserr("error receiving file"); 
+					break;
+				}
+				total += n;
+				bytesleft -= n;
+			}
+			//printf("The buffer is: \n%s", buffer);
+			//printf("Amount of bytes received is for one send: %d\n", total);
 		
-		int bytes_written = write(tempfd, buffer, size); //is buffer cleared here?
-		printf("Amount of bytes written to file is: %d\n", bytes_written);
-		totalWritten += bytes_written;
-		if (bytes_written == 0 || totalWritten == size) // We're done writing into the file
-			break;
+			int bytes_written = write(tempfd, buffer, useSize);
+			printf("Amount of bytes written to file is: %d\n", bytes_written);
+			totalWritten += bytes_written;
+			printf("Total amount of bytes written is: %d\n", totalWritten);
+			if (bytes_written == 0 || totalWritten == size) //Done writing into the file
+				break;
 
-		if (bytes_written < 0) syserr("error writing file"); 
+			if (bytes_written < 0) syserr("error writing file");
+		
     }	
 }
 
